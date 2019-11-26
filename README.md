@@ -14,11 +14,11 @@ This package will scan your AWS account to identify whether basic security servi
 - EBS Encryption
 - More coming soon...
 
-## Installation
-- pip install secureaws
-- Clone the repo and run `setup.py install`
+## Installation (Any 1)
+- pip3 install secureaws
+- Clone the repo and run `python3 setup.py install`
 
-## Usage
+## Usage (Any 1)
 - secureaws --access-key XXXXXX --secret-key XXXXXX --region us-east-1
 - secureaws --profile XXXXXX --region us-east-1
 - secureaws --region us-east-1

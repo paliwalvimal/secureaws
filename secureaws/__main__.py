@@ -1,4 +1,4 @@
-import secureaws
+from secureaws import secureaws
 import click
 
 @click.command()
@@ -11,11 +11,8 @@ def main(access_key, secret_key, profile, region, check):
     """
     This package will scan your AWS account to identify whether basic security services are enabled. If not, will help you enable the same.
     """
-    awss3cure_obj = secureaws(access_key, secret_key, profile, region)
+    secureaws_obj = secureaws(access_key, secret_key, profile, region)
     if not check:
-        awss3cure_obj.menu()
+        secureaws_obj.menu()
     else:
-        awss3cure_obj.check_account()
-
-if __name__ == '__main__':
-    main()
+        secureaws_obj.check_account()
