@@ -17,7 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     entry_points ={
         'console_scripts': [
-            'secureaws = secureaws.secureaws:main'
+            'secureaws = secureaws.__main__:main'
         ]
     },
     classifiers=[
