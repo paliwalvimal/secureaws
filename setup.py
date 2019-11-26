@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="secureaws",
-    version="19.11.01",
+    version="19.11.02",
     author="Vimal Paliwal",
     author_email="hello@vimalpaliwal.com",
     description="A package to help you enable/setup basic security services on an AWS account",
