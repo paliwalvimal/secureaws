@@ -15,7 +15,7 @@ This package will scan your AWS account to identify whether basic security servi
 - More coming soon...
 
 ## Installation (Any 1)
-- pip3 install secureaws
+- Run `pip3 install secureaws`
 - Clone the repo and run `python3 setup.py install`
 
 ## Usage (Any 1)
