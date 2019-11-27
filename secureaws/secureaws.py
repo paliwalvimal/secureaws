@@ -380,7 +380,7 @@ class secureaws:
                     print("=============== HELP ===============")
                     print("To set up individual service simply provide the number referring to the service and hit return key.")
                     print("To set up multiple services simply provide comma(,) seperated numbers referring to the service and hit return key. Example: 2,5,1,3")
-                    print("To set up all services provide 8 hit return key.")
+                    print("To set up all services provide * and hit return key.")
                 elif len(choice.split(",")) > 0:
                     choices = choice.split(",")
                     choices.sort()
@@ -689,8 +689,8 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def add_config_rules(self):
-        """        
+    def add_config_rules(self):     # COMING SOON...
+        """
         access-key-rotated
         acm-certificate-expiration-check
         alb-http-to-https-redirection-check
@@ -839,8 +839,11 @@ class secureaws:
         """
 
         try:
-            print("\nThis will enable MFA on root user.")
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            username = str.lower(str.strip(input("\nUsername ({}): ".format(username))))
+            username = "root" if str.strip(username) == "" else username
+
+            print("\nThis will enable MFA on {} user.".format(username))
+            opt = str.lower(str.strip(input("Do you want to continue(Y/n): ")))
 
             if opt == "y" or opt == "":
                 # Creating virtual mfa device
@@ -849,8 +852,8 @@ class secureaws:
                 iam = self.session.client('iam')
 
                 rand_num = random.randint(1000, 9999)
-                mfa_name = "root" if str.strip(username) == "" else username
-                user_path = "/" if str.strip(username) == "" else "/user/" + username + "/"
+                mfa_name = username
+                user_path = "/" if username == "root" else "/user/" + username + "/"
                 mresp = iam.create_virtual_mfa_device(
                     Path=user_path,
                     VirtualMFADeviceName='{}-mfa-device-{}'.format(mfa_name, rand_num)
@@ -1052,3 +1055,6 @@ def main(access_key, secret_key, profile, region, check):
         secureaws_obj.menu()
     else:
         secureaws_obj.check_account()
+
+if __name__ == '__main__':
+    main()
