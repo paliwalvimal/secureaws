@@ -73,7 +73,7 @@ class secureaws:
             elif choice == "2":
                 self.secure_account_menu()
             elif choice == "3":
-                self.create_rsa_key_pair()
+                create_rsa_key_pair()
             elif choice == "q":
                 print("Thanks for choosing secureaws.\n")
                 break
@@ -1101,40 +1101,6 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    # Utility function
-    def create_rsa_key_pair(self):
-        """
-        This will generate a new custom RSA key pair
-        """
-
-        try:
-            sys.stdout.write("Generating Key Pair... ")
-            sys.stdout.flush()
-            from Cryptodome.PublicKey import RSA
-
-            new_key = RSA.generate(2048)
-            public_key = new_key.publickey().exportKey('OpenSSH')
-            private_key = new_key.exportKey()
-
-            pvt_file = "private-key-{}.pem".format(self.random_string(5))
-            file_out = open(pvt_file, "wb")
-            file_out.write(private_key)
-
-            pub_file = "public-key-{}.pub".format(self.random_string(5))
-            file_out = open(pub_file, "wb")
-            file_out.write(public_key)
-
-            print("Ok")
-            print("Private Key: {}".format(pvt_file))
-            print("Public Key: {}".format(pub_file))
-            return True
-        except ClientError as e:
-            print("Error: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message'])
-            return False
-        except Exception as ex:
-            print("Error: {}".format(ex))
-            return False
-
     # Helper functions
     def get_name_tag(self, tags):
         for tag in tags:
@@ -1146,6 +1112,43 @@ class secureaws:
     def random_string(self, len):
         return secrets.token_hex()[0:len]
 
+# Utility Function(s)
+def create_rsa_key_pair(file_name="", key_size=4096):
+    """
+    This will generate a new custom RSA key pair
+    """
+
+    try:
+        secureaws_obj = secureaws()
+        sys.stdout.write("Generating Key Pair... ")
+        sys.stdout.flush()
+        from Cryptodome.PublicKey import RSA
+
+        new_key = RSA.generate(key_size)
+        public_key = new_key.publickey().exportKey('OpenSSH')
+        private_key = new_key.exportKey()
+        
+        pvt_file = "private-key-{}.pem".format(secureaws_obj.random_string(5)) if file_name == "" or file_name is None else "{}.pem".format(file_name)
+        pub_file = "public-key-{}.pub".format(secureaws_obj.random_string(5)) if file_name == "" or file_name is None else "{}.pub".format(file_name)
+        
+        file_out = open(pvt_file, "wb")
+        file_out.write(private_key)
+
+        file_out = open(pub_file, "wb")
+        file_out.write(public_key)
+
+        print("Ok")
+        print("Private Key: {}".format(pvt_file))
+        print("Public Key: {}".format(pub_file))
+        return True
+    except ClientError as e:
+        print("Error: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message'])
+        return False
+    except Exception as ex:
+        print("Error: {}".format(ex))
+        return False
+
+# Managing CLI
 @click.group()
 def init_group():
     pass
@@ -1199,6 +1202,13 @@ def check(access_key, secret_key, profile, region):
             }
         ]
     }
+
+    \b
+    Usage:
+    - Scan AWS account using profile:
+        secureaws check --profile xxx --region xxx
+    - Scan AWS account using keys:
+        secureaws check --access-key xxx --secret-key xxx --region xxx
     '''
     
     secureaws_obj = secureaws(access_key, secret_key, profile, region)
@@ -1269,21 +1279,34 @@ def setup(access_key, secret_key, profile, region, non_interactive, svc):
 
     \b
     Usage:
-    - To setup all services using AWS profile:
+    - Setup all services using AWS profile:
         secureaws setup --profile xxx --region xxx
-    - To setup all services using AWS keys:
+    - Setup all services using AWS keys:
         secureaws setup --access-key xxx --secret-key xxx --region xxx
-    - To setup specific service(s):
-        secureaws setup --profile xxx --service cloudtrail -s flowlogs -s mfa
-    - To setup MFA for an IAM user:
-        secureaws setup --profile xxx -s mfa=username
+    - Setup specific service(s):
+        secureaws setup --profile xxx --service cloudtrail -s flowlogs -s mfa --region xxx
+    - Setup MFA for an IAM user:
+        secureaws setup --profile xxx -s mfa=username --region xxx
     '''
 
     secureaws_obj = secureaws(access_key, secret_key, profile, region)
-    # print(svc)
     secureaws_obj.secure_account(svc, non_interactive)
 
-sa = click.CommandCollection(sources=[init_group,chk_group,setup_group])
+@click.group()
+def rsa_group():
+    pass
+
+@rsa_group.command()
+@click.option('--file-name', help='File name for private and public key')
+@click.option('--key-size', default=4096, help='Key size (Default: 4096)')
+def genrsa(file_name, key_size):
+    '''
+    This will generate RSA key pair
+    '''
+    create_rsa_key_pair(file_name, key_size)
+
+# Map all click groups
+sa = click.CommandCollection(sources=[init_group,chk_group,setup_group,rsa_group])
 
 if __name__ == '__main__':
     sa()

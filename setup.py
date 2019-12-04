@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="secureaws",
-    version="19.11.03",
+    version="19.12.01",
     author="Vimal Paliwal",
     author_email="hello@vimalpaliwal.com",
-    description="A package to help you enable/setup basic security services on an AWS account",
+    description="An application to scan if basic security services are enabled on your AWS account and help you setup the same.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/paliwalvimal/secure-aws",
