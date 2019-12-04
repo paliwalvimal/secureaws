@@ -71,7 +71,7 @@ class secureaws:
             if choice == "1":
                 self.check_account()
             elif choice == "2":
-                self.secure_account()
+                self.secure_account_menu()
             elif choice == "3":
                 self.create_rsa_key_pair()
             elif choice == "q":
@@ -141,6 +141,9 @@ class secureaws:
     def check_cloudtrail(self):
         """
         This will check if CloudTrail is enabled
+
+        IAM Permission Required:
+            - cloudtrail:DescribeTrails
         """
         
         try:
@@ -158,6 +161,9 @@ class secureaws:
     def check_config(self):
         """
         This will check if Config is enabled
+
+        IAM Permission Required:
+            - config:DescribeConfigurationRecorderStatus
         """
 
         try:
@@ -175,6 +181,9 @@ class secureaws:
     def check_flowlogs(self):
         """
         This will check if network flow logs are enabled
+
+        IAM Permission Required:
+            - ec2:DescribeFlowLogs
         """
 
         try:
@@ -192,6 +201,9 @@ class secureaws:
     def check_root_mfa(self):
         """
         This will check if MFA for root account is enabled
+
+        IAM Permission Required:
+            - iam:GetAccountSummary
         """
 
         try:
@@ -209,6 +221,9 @@ class secureaws:
     def check_custom_password_policy(self):
         """
         This will check if a strong password policy is set
+
+        IAM Permission Required:
+            - iam:GetAccountPasswordPolicy
         """
 
         try:
@@ -227,6 +242,9 @@ class secureaws:
     def check_s3_buckets(self):
         """
         This will check if server-side encryption is enabled for all your S3 buckets
+
+        IAM Permission Required:
+            - s3:ListAllMyBuckets
         """
 
         try:
@@ -256,6 +274,9 @@ class secureaws:
     def check_ec2_volumes(self):
         """
         This will check if server-side encryption is enabled for all your EBS volumes
+
+        IAM Permission Required:
+            - ec2:DescribeVolumes
         """
 
         try:
@@ -295,6 +316,9 @@ class secureaws:
     def check_macie(self):
         """
         This will check if Macie is enabled
+
+        IAM Permission Required:
+            - macie:ListMemberAccounts
         """
         
         try:
@@ -312,6 +336,9 @@ class secureaws:
     def check_guard_duty(self):
         """
         This will check if GuardDuty is enabled
+
+        IAM Permission Required:
+            - guardduty:ListDetectors
         """
         
         try:
@@ -328,6 +355,10 @@ class secureaws:
             return "Error: {}".format(ex)
 
     def check_bucket_exists(self, bname):
+        """
+        IAM Permission Required:
+            - s3:HeadBucket
+        """
         s3 = self.session.client('s3')
         try:
             s3.head_bucket(Bucket=bname)
@@ -336,6 +367,10 @@ class secureaws:
             return False
 
     def create_s3_bucket(self, bname):
+        """
+        IAM Permission Required:
+            - s3:CreateBucket
+        """
         try:
             s3.create_bucket(
                 Bucket=bname,
@@ -351,10 +386,14 @@ class secureaws:
             return "Error: {}".format(ex)
 
     def get_account_id(self):
+        """
+        IAM Permission Required:
+            - sts:GetCallerIdentity
+        """
         sts = self.session.client('sts')
         return sts.get_caller_identity()['Account']
 
-    def secure_account(self):
+    def secure_account_menu(self):
         """
         This will enable basic security services on your AWS account
         """
@@ -396,7 +435,7 @@ class secureaws:
                         elif ch == "3":
                             self.enable_flowlogs()
                         elif ch == "4":
-                            self.setup_virtual_mfa("root")
+                            self.setup_virtual_mfa()
                         elif ch == "5":
                             self.enable_s3_sse()
                         elif ch == "6":
@@ -406,12 +445,7 @@ class secureaws:
                         else:
                             print("Invalid Choice.")
                 elif choice == "*":
-                    self.enable_cloudtrail()
-                    self.enable_config()
-                    self.enable_flowlogs()
-                    self.setup_virtual_mfa("root")
-                    self.enable_s3_sse()
-                    self.setup_custom_password_policy()
+                    secure_account()
                 elif choice == "1":
                     self.enable_cloudtrail()
                 elif choice == "2":
@@ -419,7 +453,7 @@ class secureaws:
                 elif choice == "3":
                     self.enable_flowlogs()
                 elif choice == "4":
-                    self.setup_virtual_mfa("root")
+                    self.setup_virtual_mfa()
                 elif choice == "5":
                     self.enable_s3_sse()
                 elif choice == "6":
@@ -430,23 +464,56 @@ class secureaws:
             print("Fail. Reason: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message'])
             return False
 
-    def enable_cloudtrail(self):
+    def secure_account(self, svc, non_interactive=False):
+        if len(svc) == 0:
+            self.enable_cloudtrail(non_interactive)
+            self.enable_config(non_interactive)
+            self.enable_flowlogs(non_interactive)
+            self.setup_virtual_mfa(non_interactive)
+            self.enable_s3_sse(non_interactive)
+            self.setup_custom_password_policy(non_interactive)
+        else:
+            for s in svc:
+                if s == "cloudtrail":
+                    self.enable_cloudtrail(non_interactive)
+                elif s == "config":
+                    self.enable_config(non_interactive)
+                elif s == "flowlogs":
+                    self.enable_flowlogs(non_interactive)
+                elif s == "mfa" or "mfa=" in s:
+                    uname = "root" if "=" not in s else s.split("=")[1]
+                    self.setup_virtual_mfa(non_interactive, uname)
+                elif s == "s3-sse":
+                    self.enable_s3_sse(non_interactive)
+                elif s == "password-policy":
+                    self.setup_custom_password_policy(non_interactive)
+    
+    def enable_cloudtrail(self, non_interactive):
         """
-        This will enable CloudTrail service
+        This will create a new S3 bucket and enable CloudTrail service for all regions along with recording global events
         """
 
+        opt = ""
+        bname = ""
         try:
-            print("\nFollowing additional resource will be created:")
-            print("> S3 Bucket - To store audit logs")
-            
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            print("\n====================================")
+            print("Setting up CloudTrail")
+            print("====================================")
+            if not non_interactive:
+                print("Following additional resource will be created:")
+                print("> S3 Bucket - To store audit logs")
+                
+                opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            else:
+                opt = "y"
+                bname = "cloudtrail-all-regions-{}".format(self.random_string(5))
 
             if opt == "y" or opt == "":
-                bname = str.lower(str.strip(input("Bucket Name: ")))
-                
                 # Fetching Account ID for S3 Policy and Starting CloudTrail log
                 accountId = self.get_account_id()
 
+                bname = str.lower(str.strip(input("Bucket Name: "))) if bname == "" else bname
+                
                 # Checking if bucket already exists
                 sys.stdout.write("Checking if bucket exists... ")
                 sys.stdout.flush()
@@ -459,7 +526,7 @@ class secureaws:
                     sys.stdout.flush()
                     cbresp = self.create_s3_bucket(bname)
                     if cbresp:
-                        print("Ok")
+                        print("Ok ({})".format(bname))
                     else:
                         print(cbresp)
                         return False
@@ -537,22 +604,31 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
     
-    def enable_config(self):
+    def enable_config(self, non_interactive):
         """
-        This will enabel Config service
+        This will create a new S3 bucket and enable Config service for specific region
         """
 
+        opt = ""
+        bname = ""
         try:
-            print("\nFollowing additional resource will be created:")
-            print("> S3 Bucket - To store configuration snapshots")
+            print("\n====================================")
+            print("Setting up Config")
+            print("====================================")
+            if not non_interactive:
+                print("Following additional resource will be created:")
+                print("> S3 Bucket - To store configuration snapshots")
 
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+                opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            else:
+                opt = "y"
+                bname = "config-{}-{}".format(self.region, self.random_string(5))
 
             if opt == "" or opt == "y":
-                bname = str.lower(str.strip(input("Bucket Name: ")))
-                
                 # Fetching Account ID for S3 Policy and Starting CloudTrail log
                 accountId = self.get_account_id()
+                
+                bname = str.lower(str.strip(input("Bucket Name: "))) if bname == "" else bname
 
                 # Checking if bucket exists
                 sys.stdout.write("Checking if bucket exists... ")
@@ -566,7 +642,7 @@ class secureaws:
                     sys.stdout.flush()
                     cbresp = self.create_s3_bucket(bname)
                     if cbresp == True:
-                        print("Ok")
+                        print("Ok ({})".format(bname))
                     else:
                         print(cbresp)
                         return False
@@ -689,7 +765,7 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def add_config_rules(self):     # COMING SOON...
+    def add_config_rules(self, non_interactive):     # COMING SOON...
         """
         access-key-rotated
         acm-certificate-expiration-check
@@ -712,17 +788,25 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def enable_flowlogs(self):
+    def enable_flowlogs(self, non_interactive):
         """
         This will enable flow logs on all existing VPCs
         """
 
+        opt = ""
         try:
-            print("\nFollowing additional resources will be created:")
-            print("> IAM Role - Permission for VPC to put logs in CloudWatch")
-            print("> CloudWatch Log Group - To store VPC Flow Logs")
+            print("\n====================================")
+            print("Setting up FlowLogs")
+            print("====================================")
 
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            if not non_interactive:
+                print("Following additional resources will be created:")
+                print("> IAM Role - Permission for VPC to put logs in CloudWatch")
+                print("> CloudWatch Log Group - To store VPC Flow Logs")
+
+                opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            else:
+                opt = "y"
 
             if opt == "y" or opt == "":      
                 # Creating IAM Role
@@ -822,9 +906,9 @@ class secureaws:
 
                     print("Ok ({})".format(eresp['FlowLogIds'][0]))
                     return True
-                else:
-                    print("Skipping flowlog setup")
-                    return False
+            else:
+                print("Skipping flowlog setup")
+                return False
 
         except ClientError as e:
             print("Error: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message'])
@@ -833,17 +917,24 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def setup_virtual_mfa(self, username=""):
+    def setup_virtual_mfa(self, non_interactive, username="root"):
         """
-        This will setup MFA on root account
+        This will setup MFA on root account by default
         """
 
+        opt = ""
         try:
-            username = str.lower(str.strip(input("\nUsername ({}): ".format(username))))
-            username = "root" if str.strip(username) == "" else username
+            print("\n====================================")
+            print("Setting up MFA")
+            print("====================================")
+            if not non_interactive:
+                uname = str.lower(str.strip(input("Username ({}): ".format(username))))
+                username = uname if not str.strip(uname) == "" else username
 
-            print("\nThis will enable MFA on {} user.".format(username))
-            opt = str.lower(str.strip(input("Do you want to continue(Y/n): ")))
+                print("\nThis will enable MFA on {} user.".format(username))
+                opt = str.lower(str.strip(input("Do you want to continue(Y/n): ")))
+            else:
+                opt = "y"
 
             if opt == "y" or opt == "":
                 # Creating virtual mfa device
@@ -907,14 +998,22 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def enable_s3_sse(self):
+    def enable_s3_sse(self, non_interactive):
         """
         This will enable server-side encryption on all your S3 buckets
         """
 
+        opt = ""
         try:
-            print("\nThis will enable SSE on all S3 buckets.")
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            print("\n====================================")
+            print("Setting up S3 SSE")
+            print("====================================")
+
+            if not non_interactive:
+                print("This will enable SSE on all S3 buckets.")
+                opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            else:
+                opt = "y"
 
             if opt == "y" or opt == "":
                 print("===============================")
@@ -952,22 +1051,30 @@ class secureaws:
             print("Error: {}".format(ex))
             return False
 
-    def setup_custom_password_policy(self, pass_length=10, rq_num=True, rq_upper=True, rq_lower=True, rq_symbol=True, pass_history=3, pass_age=90):
+    def setup_custom_password_policy(self, non_interactive, pass_length=10, rq_num=True, rq_upper=True, rq_lower=True, rq_symbol=True, pass_history=3, pass_age=90):
         """
         This will setup a strong password policy
         """
 
+        opt = ""
         try:
-            print("\nFollowing policy will be created:")
+            print("\n====================================")
+            print("Setting up Password Policy")
+            print("====================================")
+            print("Following policy will be created:")
             print("> Minimum Password Length: {}".format(pass_length))
-            print("> Require Numbers: {}".format(rq_num))
-            print("> Require Symbols: {}".format(rq_symbol))
-            print("> Require Uppercase: {}".format(rq_upper))
-            print("> Require Lowercase: {}".format(rq_lower))
-            print("> Password History: Last {}".format(pass_history))
-            print("> Password Age: {} days".format(pass_age))
-            
-            opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            print("> Require Numbers        : {}".format(rq_num))
+            print("> Require Symbols        : {}".format(rq_symbol))
+            print("> Require Uppercase      : {}".format(rq_upper))
+            print("> Require Lowercase      : {}".format(rq_lower))
+            print("> Password History       : Last {}".format(pass_history))
+            print("> Password Age           : {} days".format(pass_age))
+
+            if not non_interactive:
+                opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
+            else:
+                opt = "y"
+
             if opt == "y" or opt == "":
                 sys.stdout.write("Setting up password policy... ")
                 sys.stdout.flush()
@@ -1039,22 +1146,144 @@ class secureaws:
     def random_string(self, len):
         return secrets.token_hex()[0:len]
 
+@click.group()
+def init_group():
+    pass
 
-@click.command()
+@init_group.command()
 @click.option('--access-key', help='AWS IAM User Access Key')
 @click.option('--secret-key', help='AWS IAM User Access Key')
 @click.option('--profile', help='AWS CLI profile')
 @click.option('--region', default='us-east-1', help='AWS region identifier. Default: us-east-1')
-@click.option('--check', flag_value='check', help='Scan AWS account for basic security services')
-def main(access_key, secret_key, profile, region, check):
+def menu(access_key, secret_key, profile, region):
     """
-    This package will scan your AWS account to identify whether basic security services are enabled. If not, will help you enable the same.
+    Displays application menu options.
+
+    Authentication information is required to scan or enable security services for your AWS account.
     """
     secureaws_obj = secureaws(access_key, secret_key, profile, region)
-    if not check:
-        secureaws_obj.menu()
-    else:
-        secureaws_obj.check_account()
+    secureaws_obj.menu()
+
+@click.group()
+def chk_group():
+    pass
+
+@chk_group.command()
+@click.option('--access-key', help='AWS IAM User Access Key')
+@click.option('--secret-key', help='AWS IAM User Access Key')
+@click.option('--profile', help='AWS CLI profile')
+@click.option('--region', default='us-east-1', help='AWS region identifier. Default: us-east-1')
+def check(access_key, secret_key, profile, region):
+    '''
+    This command will scan your AWS account to identify whether basic security services are enabled or not.
+    
+    \b
+    IAM Policy:
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "cloudtrail:DescribeTrails",
+                    "config:DescribeConfigurationRecorderStatus",
+                    "ec2:DescribeFlowLogs",
+                    "iam:GetAccountSummary",
+                    "iam:GetAccountPasswordPolicy",
+                    "macie:ListMemberAccounts",
+                    "guardduty:ListDetectors",
+                    "s3:ListAllMyBuckets",
+                    "ec2:DescribeVolumes"
+                ],
+                "Resource": "*"
+            }
+        ]
+    }
+    '''
+    
+    secureaws_obj = secureaws(access_key, secret_key, profile, region)
+    secureaws_obj.check_account()
+
+@click.group()
+def setup_group():
+    pass
+
+@setup_group.command()
+@click.option('--access-key', help='AWS IAM User Access Key')
+@click.option('--secret-key', help='AWS IAM User Access Key')
+@click.option('--profile', help='AWS CLI profile')
+@click.option('--region', default='us-east-1', help='AWS region identifier. Default: us-east-1')
+@click.option('--yes', '-y', 'non_interactive', is_flag=True, help='Non-interactive mode')
+@click.option('--service', '-s', 'svc', multiple=True, help='Specific service name to setup')
+def setup(access_key, secret_key, profile, region, non_interactive, svc):
+    '''
+    \b
+    This command will setup following security services on your AWS account:
+    - CloudTrail
+    - Config
+    - Flow Logs
+    - MFA (Default User: root)
+    - S3 SSE (Default: AES256)
+    - Password Policy
+    
+    \b
+    IAM Policy:
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:CreateBucket",
+                    "s3:PutEncryptionConfiguration",
+                    "s3:ListAllMyBuckets",
+                    "s3:PutBucketPolicy",
+                    "s3:HeadBucket"
+                    "cloudtrail:StartLogging",
+                    "cloudtrail:CreateTrail",
+                    "iam:CreateRole",
+                    "iam:AttachRolePolicy",
+                    "iam:CreatePolicy",
+                    "iam:UpdateAccountPasswordPolicy",
+                    "config:StartConfigurationRecorder",
+                    "config:PutDeliveryChannel",
+                    "config:PutConfigurationRecorder",
+                    "logs:CreateLogGroup",
+                    "logs:DescribeLogGroups",
+                    "ec2:CreateFlowLogs",
+                    "ec2:DescribeVpcs",
+                ],
+                "Resource": "*"
+            }
+        ]
+    }
+
+    \b
+    Service Names:
+    - cloudtrail
+    - config
+    - flowlogs
+    - mfa
+    - s3-sse
+    - password-policy
+
+    \b
+    Usage:
+    - To setup all services using AWS profile:
+        secureaws setup --profile xxx --region xxx
+    - To setup all services using AWS keys:
+        secureaws setup --access-key xxx --secret-key xxx --region xxx
+    - To setup specific service(s):
+        secureaws setup --profile xxx --service cloudtrail -s flowlogs -s mfa
+    - To setup MFA for an IAM user:
+        secureaws setup --profile xxx -s mfa=username
+    '''
+
+    secureaws_obj = secureaws(access_key, secret_key, profile, region)
+    # print(svc)
+    secureaws_obj.secure_account(svc, non_interactive)
+
+sa = click.CommandCollection(sources=[init_group,chk_group,setup_group])
 
 if __name__ == '__main__':
-    main()
+    sa()
