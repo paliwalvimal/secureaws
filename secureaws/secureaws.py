@@ -1308,5 +1308,8 @@ def genrsa(file_name, key_size):
 # Map all click groups
 sa = click.CommandCollection(sources=[init_group,chk_group,setup_group,rsa_group])
 
+def main():
+    sa()
+
 if __name__ == '__main__':
     sa()
