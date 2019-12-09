@@ -11,6 +11,7 @@ AUTHOR = Vimal Paliwal <hello@vimalpaliwal.com>
 """
 
 import sys
+import time
 import boto3
 import json
 import random
@@ -245,6 +246,7 @@ class secureaws:
 
         IAM Permission Required:
             - s3:ListAllMyBuckets
+            - s3:GetEncryptionConfiguration
         """
 
         try:
@@ -259,8 +261,11 @@ class secureaws:
                     r = s3.get_bucket_encryption(Bucket=bname)
                     print("Enabled")
                 except ClientError as err:
-                    print("Disabled")
-                    failed_buckets.append(bname)
+                    if err.response['Error']['Code'] == "ServerSideEncryptionConfigurationNotFoundError":
+                        print("Disabled")
+                        failed_buckets.append(bname)
+                    else:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
             
             if len(failed_buckets) > 0:
                 return False
@@ -372,16 +377,22 @@ class secureaws:
             - s3:CreateBucket
         """
         try:
-            s3.create_bucket(
-                Bucket=bname,
-                ACL='private',
-                CreateBucketConfiguration={
-                    'LocationConstraint': self.region
+            s3 = self.session.client('s3')
+            req = {
+                "Bucket": bname,
+                "ACL": "private"
+            }
+
+            if self.region != "us-east-1":
+                tmpObj = {
+                    "LocationConstraint": self.region
                 }
-            )
+                req["CreateBucketConfiguration"] = tmpObj
+
+            s3.create_bucket(**req)
             return True
         except ClientError as e:
-            return "Error: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message']
+            return "Error: {}-{}".format(e.response['Error']['Code'], e.response['Error']['Message'])
         except Exception as ex:
             return "Error: {}".format(ex)
 
@@ -417,9 +428,11 @@ class secureaws:
                     break
                 elif choice == "?":
                     print("=============== HELP ===============")
-                    print("To set up individual service simply provide the number referring to the service and hit return key.")
-                    print("To set up multiple services simply provide comma(,) seperated numbers referring to the service and hit return key. Example: 2,5,1,3")
-                    print("To set up all services provide * and hit return key.")
+                    print("- To set up individual service simply provide the number referring to the service and hit return key.")
+                    print("- To set up multiple services simply provide comma(,) seperated numbers referring to the service and hit return key. Example: 2,5,1,3")
+                    print("- To set up all services provide * and hit return key.")
+                elif choice == "*":
+                    self.secure_account(svc=None, non_interactive=False)
                 elif len(choice.split(",")) > 0:
                     choices = choice.split(",")
                     choices.sort()
@@ -429,35 +442,33 @@ class secureaws:
                     
                     for ch in choices:
                         if ch == "1":
-                            self.enable_cloudtrail()
+                            self.enable_cloudtrail(non_interactive=False)
                         elif ch == "2":
-                            self.enable_config()
+                            self.enable_config(non_interactive=False)
                         elif ch == "3":
-                            self.enable_flowlogs()
+                            self.enable_flowlogs(non_interactive=False)
                         elif ch == "4":
-                            self.setup_virtual_mfa()
+                            self.setup_virtual_mfa(non_interactive=False)
                         elif ch == "5":
-                            self.enable_s3_sse()
+                            self.enable_s3_sse(non_interactive=False)
                         elif ch == "6":
-                            self.setup_custom_password_policy()
+                            self.setup_custom_password_policy(non_interactive=False)
                         elif ch == "q" or ch == "?" or ch == "*":
                             continue
                         else:
                             print("Invalid Choice.")
-                elif choice == "*":
-                    secure_account()
                 elif choice == "1":
-                    self.enable_cloudtrail()
+                    self.enable_cloudtrail(non_interactive=False)
                 elif choice == "2":
-                    self.enable_config()
+                    self.enable_config(non_interactive=False)
                 elif choice == "3":
-                    self.enable_flowlogs()
+                    self.enable_flowlogs(non_interactive=False)
                 elif choice == "4":
-                    self.setup_virtual_mfa()
+                    self.setup_virtual_mfa(non_interactive=False)
                 elif choice == "5":
-                    self.enable_s3_sse()
+                    self.enable_s3_sse(non_interactive=False)
                 elif choice == "6":
-                    self.setup_custom_password_policy()
+                    self.setup_custom_password_policy(non_interactive=False)
                 else:
                     print("Invalid choice.")
         except ClientError as e:
@@ -465,7 +476,7 @@ class secureaws:
             return False
 
     def secure_account(self, svc, non_interactive=False):
-        if len(svc) == 0:
+        if svc == None or len(svc) == 0:
             self.enable_cloudtrail(non_interactive)
             self.enable_config(non_interactive)
             self.enable_flowlogs(non_interactive)
@@ -525,7 +536,7 @@ class secureaws:
                     sys.stdout.write("Creating bucket... ")
                     sys.stdout.flush()
                     cbresp = self.create_s3_bucket(bname)
-                    if cbresp:
+                    if cbresp == True:
                         print("Ok ({})".format(bname))
                     else:
                         print(cbresp)
@@ -563,6 +574,7 @@ class secureaws:
                             }
                         ]
                     }
+                    time.sleep(1)
                     s3.put_bucket_policy(
                         Bucket=bname,
                         Policy=json.dumps(bpolicy)
@@ -679,45 +691,12 @@ class secureaws:
                             }
                         ]
                     }
+                    time.sleep(1)
                     s3.put_bucket_policy(
                         Bucket=bname,
                         Policy=json.dumps(bpolicy)
                     )
                     print("Ok")
-                except ClientError as err:
-                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
-
-                # Creating IAM role for Config
-                try:
-                    sys.stdout.write("Creating IAM role for Config... ")
-                    sys.stdout.flush()
-                    
-                    iam = self.session.client('iam')
-                    trust_policy = {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "config.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole"
-                            }
-                        ]
-                    }
-                    roleName = "config-{}-role-{}".format(self.region, self.random_string(5))
-                    iresp = iam.create_role(
-                        RoleName=roleName,
-                        AssumeRolePolicyDocument=json.dumps(trust_policy),
-                    )
-                    configRoleArn = iresp['Role']['Arn']
-                    
-                    iam.attach_role_policy(
-                        RoleName=roleName,
-                        PolicyArn='arn:aws:iam::aws:policy/aws-service-role/AWSConfigServiceRolePolicy'
-                    )
-                    print("Ok ({})".format(roleName))
                 except ClientError as err:
                     print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
                     return False
@@ -732,7 +711,7 @@ class secureaws:
                     cresp = config.put_configuration_recorder(
                         ConfigurationRecorder={
                             'name': recorder_name,
-                            'roleARN': configRoleArn,
+                            'roleARN': "arn:aws:iam::{}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig".format(accountId),
                             'recordingGroup': {
                                 'allSupported': True,
                                 'includeGlobalResourceTypes': True
@@ -937,10 +916,41 @@ class secureaws:
                 opt = "y"
 
             if opt == "y" or opt == "":
+                # Checking if user exists
+                iam = self.session.client('iam')
+                sys.stdout.write("Checking if user exists... ")
+                sys.stdout.flush()
+                try:
+                    uresp = iam.get_user(
+                        UserName=username
+                    )
+                    print("Ok")
+                except ClientError as err:
+                    if err.response['Error']['Code'] == "NoSuchEntity":
+                        print("False")
+                    else:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                    return False
+
+                # Checking if MFA is already enabled for user
+                iam = self.session.client('iam')
+                sys.stdout.write("Checking if MFA already enabled... ")
+                sys.stdout.flush()
+                try:
+                    uresp = iam.list_mfa_devices(
+                        UserName=username
+                    )
+                    if len(uresp['MFADevices']) > 0:
+                        print("True")
+                        return False
+                    print("False")
+                except ClientError as err:
+                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                    return False
+
                 # Creating virtual mfa device
                 sys.stdout.write("Creating virtual MFA device... ")
                 sys.stdout.flush()
-                iam = self.session.client('iam')
 
                 rand_num = random.randint(1000, 9999)
                 mfa_name = username
@@ -1005,11 +1015,11 @@ class secureaws:
 
         opt = ""
         try:
-            print("\n====================================")
-            print("Setting up S3 SSE")
-            print("====================================")
-
             if not non_interactive:
+                print("\n====================================")
+                print("Setting up S3 SSE")
+                print("====================================")
+
                 print("This will enable SSE on all S3 buckets.")
                 opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
             else:
@@ -1089,7 +1099,7 @@ class secureaws:
                     MaxPasswordAge=pass_age,
                     PasswordReusePrevention=pass_history
                 )
-                print("Ok.")
+                print("Ok")
             else:
                 print("Skipping password policy setup")
 
@@ -1196,6 +1206,7 @@ def check(access_key, secret_key, profile, region):
                     "macie:ListMemberAccounts",
                     "guardduty:ListDetectors",
                     "s3:ListAllMyBuckets",
+                    "s3:GetEncryptionConfiguration",
                     "ec2:DescribeVolumes"
                 ],
                 "Resource": "*"
@@ -1248,20 +1259,25 @@ def setup(access_key, secret_key, profile, region, non_interactive, svc):
                     "s3:PutEncryptionConfiguration",
                     "s3:ListAllMyBuckets",
                     "s3:PutBucketPolicy",
-                    "s3:HeadBucket"
+                    "s3:HeadBucket",
                     "cloudtrail:StartLogging",
                     "cloudtrail:CreateTrail",
                     "iam:CreateRole",
+                    "iam:PassRole",
                     "iam:AttachRolePolicy",
                     "iam:CreatePolicy",
                     "iam:UpdateAccountPasswordPolicy",
+                    "iam:CreateVirtualMFADevice",
+                    "iam:EnableMFADevice",
+                    "iam:GetUser",
+                    "iam:ListMFADevices",
                     "config:StartConfigurationRecorder",
                     "config:PutDeliveryChannel",
                     "config:PutConfigurationRecorder",
                     "logs:CreateLogGroup",
                     "logs:DescribeLogGroups",
                     "ec2:CreateFlowLogs",
-                    "ec2:DescribeVpcs",
+                    "ec2:DescribeVpcs"
                 ],
                 "Resource": "*"
             }
