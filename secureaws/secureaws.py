@@ -366,10 +366,14 @@ class secureaws:
         """
         s3 = self.session.client('s3')
         try:
-            s3.head_bucket(Bucket=bname)
+            r = s3.head_bucket(Bucket=bname)
             return True
-        except:
-            return False
+        except ClientError as e:
+            if e.response['Error']['Code'] == "403":
+                return True
+            else:
+                return False
+            # print("Error: " + e.response['Error']['Code'] + " - " + e.response['Error']['Message'])
 
     def create_s3_bucket(self, bname):
         """
@@ -542,70 +546,70 @@ class secureaws:
                         print(cbresp)
                         return False
                 
-                # Updating bucket policy
-                sys.stdout.write("Assigning permission to bucket... ")
-                sys.stdout.flush()
-                try:
-                    bpolicy = {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Sid": "AWSCloudTrailAclCheck",
-                                "Effect": "Allow",
-                                "Principal": {
-                                    "Service": "cloudtrail.amazonaws.com"
+                    # Updating bucket policy
+                    sys.stdout.write("Assigning permission to bucket... ")
+                    sys.stdout.flush()
+                    try:
+                        bpolicy = {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "AWSCloudTrailAclCheck",
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "Service": "cloudtrail.amazonaws.com"
+                                    },
+                                    "Action": "s3:GetBucketAcl",
+                                    "Resource": "arn:aws:s3:::{}".format(bname)
                                 },
-                                "Action": "s3:GetBucketAcl",
-                                "Resource": "arn:aws:s3:::{}".format(bname)
-                            },
-                            {
-                                "Sid": "AWSCloudTrailWrite",
-                                "Effect": "Allow",
-                                "Principal": {
-                                    "Service": "cloudtrail.amazonaws.com"
-                                },
-                                "Action": "s3:PutObject",
-                                "Resource": "arn:aws:s3:::{}/AWSLogs/{}/*".format(bname, accountId),
-                                "Condition": {
-                                    "StringEquals": {
-                                        "s3:x-amz-acl": "bucket-owner-full-control"
+                                {
+                                    "Sid": "AWSCloudTrailWrite",
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "Service": "cloudtrail.amazonaws.com"
+                                    },
+                                    "Action": "s3:PutObject",
+                                    "Resource": "arn:aws:s3:::{}/AWSLogs/{}/*".format(bname, accountId),
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "s3:x-amz-acl": "bucket-owner-full-control"
+                                        }
                                     }
                                 }
-                            }
-                        ]
-                    }
-                    time.sleep(1)
-                    s3.put_bucket_policy(
-                        Bucket=bname,
-                        Policy=json.dumps(bpolicy)
-                    )
-                    print("Ok")
-                except ClientError as err:
-                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
+                            ]
+                        }
+                        time.sleep(1)
+                        s3.put_bucket_policy(
+                            Bucket=bname,
+                            Policy=json.dumps(bpolicy)
+                        )
+                        print("Ok")
+                    except ClientError as err:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                        return False
 
-                # Setting up CloudTrail
-                try:
-                    sys.stdout.write("Setting up CloudTrail... ")
-                    sys.stdout.flush()
-                    trail = self.session.client('cloudtrail')
-                    trailName = "all-regions-trail-{}".format(self.random_string(5))
-                    tresp = trail.create_trail(
-                        Name=trailName,
-                        S3BucketName=bname,
-                        IncludeGlobalServiceEvents=True,
-                        IsMultiRegionTrail=True,
-                        EnableLogFileValidation=True
-                    )
+                    # Setting up CloudTrail
+                    try:
+                        sys.stdout.write("Setting up CloudTrail... ")
+                        sys.stdout.flush()
+                        trail = self.session.client('cloudtrail')
+                        trailName = "all-regions-trail-{}".format(self.random_string(5))
+                        tresp = trail.create_trail(
+                            Name=trailName,
+                            S3BucketName=bname,
+                            IncludeGlobalServiceEvents=True,
+                            IsMultiRegionTrail=True,
+                            EnableLogFileValidation=True
+                        )
 
-                    tresp = trail.start_logging(
-                        Name="arn:aws:cloudtrail:{}:{}:trail/{}".format(self.region, accountId, trailName)
-                    )
-                    print("Ok ({})".format(trailName))
-                    return True
-                except ClientError as err:
-                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
+                        tresp = trail.start_logging(
+                            Name="arn:aws:cloudtrail:{}:{}:trail/{}".format(self.region, accountId, trailName)
+                        )
+                        print("Ok ({})".format(trailName))
+                        return True
+                    except ClientError as err:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                        return False
             else:
                 print("Skipping CloudTrail setup.")
                 return False
@@ -647,7 +651,7 @@ class secureaws:
                 sys.stdout.flush()
                 s3 = self.session.client('s3')
                 if self.check_bucket_exists(bname):
-                        print("True")
+                    print("True")
                 else:
                     print("False")
                     sys.stdout.write("Creating bucket... ")
@@ -659,82 +663,82 @@ class secureaws:
                         print(cbresp)
                         return False
 
-                # Updating bucket policy
-                sys.stdout.write("Assigning permission to bucket... ")
-                sys.stdout.flush()
-                try:
-                    bpolicy = {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Sid": "AWSConfigBucketPermissionsCheck",
-                                "Effect": "Allow",
-                                "Principal": {
-                                    "Service": "config.amazonaws.com"
+                    # Updating bucket policy
+                    sys.stdout.write("Assigning permission to bucket... ")
+                    sys.stdout.flush()
+                    try:
+                        bpolicy = {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "AWSConfigBucketPermissionsCheck",
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "Service": "config.amazonaws.com"
+                                    },
+                                    "Action": "s3:GetBucketAcl",
+                                    "Resource": "arn:aws:s3:::{}".format(bname)
                                 },
-                                "Action": "s3:GetBucketAcl",
-                                "Resource": "arn:aws:s3:::{}".format(bname)
-                            },
-                            {
-                                "Sid": "AWSConfigBucketDelivery",
-                                "Effect": "Allow",
-                                "Principal": {
-                                    "Service": "config.amazonaws.com"
-                                },
-                                "Action": "s3:PutObject",
-                                "Resource": "arn:aws:s3:::{}/AWSLogs/{}/Config/*".format(bname, accountId),
-                                "Condition": {
-                                    "StringEquals": {
-                                        "s3:x-amz-acl": "bucket-owner-full-control"
+                                {
+                                    "Sid": "AWSConfigBucketDelivery",
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "Service": "config.amazonaws.com"
+                                    },
+                                    "Action": "s3:PutObject",
+                                    "Resource": "arn:aws:s3:::{}/AWSLogs/{}/Config/*".format(bname, accountId),
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "s3:x-amz-acl": "bucket-owner-full-control"
+                                        }
                                     }
                                 }
-                            }
-                        ]
-                    }
-                    time.sleep(1)
-                    s3.put_bucket_policy(
-                        Bucket=bname,
-                        Policy=json.dumps(bpolicy)
-                    )
-                    print("Ok")
-                except ClientError as err:
-                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
-                
-                # Setting up Config
-                try:
-                    sys.stdout.write("Setting up Config... ")
-                    sys.stdout.flush()
-                    config = self.session.client('config')
-                    recorder_name = 'config-{}-recorder-{}'.format(self.region, self.random_string(5))
+                            ]
+                        }
+                        time.sleep(1)
+                        s3.put_bucket_policy(
+                            Bucket=bname,
+                            Policy=json.dumps(bpolicy)
+                        )
+                        print("Ok")
+                    except ClientError as err:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                        return False
                     
-                    cresp = config.put_configuration_recorder(
-                        ConfigurationRecorder={
-                            'name': recorder_name,
-                            'roleARN': "arn:aws:iam::{}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig".format(accountId),
-                            'recordingGroup': {
-                                'allSupported': True,
-                                'includeGlobalResourceTypes': True
+                    # Setting up Config
+                    try:
+                        sys.stdout.write("Setting up Config... ")
+                        sys.stdout.flush()
+                        config = self.session.client('config')
+                        recorder_name = 'config-{}-recorder-{}'.format(self.region, self.random_string(5))
+                        
+                        cresp = config.put_configuration_recorder(
+                            ConfigurationRecorder={
+                                'name': recorder_name,
+                                'roleARN': "arn:aws:iam::{}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig".format(accountId),
+                                'recordingGroup': {
+                                    'allSupported': True,
+                                    'includeGlobalResourceTypes': True
+                                }
                             }
-                        }
-                    )
+                        )
 
-                    cresp = config.put_delivery_channel(
-                        DeliveryChannel={
-                            'name': 'config-{}-channel-{}'.format(self.region, self.random_string(5)),
-                            's3BucketName': bname
-                        }
-                    )
+                        cresp = config.put_delivery_channel(
+                            DeliveryChannel={
+                                'name': 'config-{}-channel-{}'.format(self.region, self.random_string(5)),
+                                's3BucketName': bname
+                            }
+                        )
 
-                    cresp = config.start_configuration_recorder(
-                        ConfigurationRecorderName=recorder_name
-                    )
+                        cresp = config.start_configuration_recorder(
+                            ConfigurationRecorderName=recorder_name
+                        )
 
-                    print("Ok ({})".format(recorder_name))
-                    return True
-                except ClientError as err:
-                    print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
+                        print("Ok ({})".format(recorder_name))
+                        return True
+                    except ClientError as err:
+                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                        return False
             else:
                 print("Skipping cofig setup")
         except ClientError as e:
@@ -916,21 +920,22 @@ class secureaws:
                 opt = "y"
 
             if opt == "y" or opt == "":
-                # Checking if user exists
-                iam = self.session.client('iam')
-                sys.stdout.write("Checking if user exists... ")
-                sys.stdout.flush()
-                try:
-                    uresp = iam.get_user(
-                        UserName=username
-                    )
-                    print("Ok")
-                except ClientError as err:
-                    if err.response['Error']['Code'] == "NoSuchEntity":
-                        print("False")
-                    else:
-                        print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
-                    return False
+                if username != "root":
+                    # Checking if user exists
+                    iam = self.session.client('iam')
+                    sys.stdout.write("Checking if user exists... ")
+                    sys.stdout.flush()
+                    try:
+                        uresp = iam.get_user(
+                            UserName=username
+                        )
+                        print("Ok")
+                    except ClientError as err:
+                        if err.response['Error']['Code'] == "NoSuchEntity":
+                            print("False")
+                        else:
+                            print("Error: " + err.response['Error']['Code'] + " - " + err.response['Error']['Message'])
+                        return False
 
                 # Checking if MFA is already enabled for user
                 iam = self.session.client('iam')
