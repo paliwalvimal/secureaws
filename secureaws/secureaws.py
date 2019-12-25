@@ -16,9 +16,9 @@ import click
 import threading
 from botocore.exceptions import ClientError
 
-import checkaws
-import setupaws
-import rsautil
+from secureaws import checkaws
+from secureaws import setupaws
+from secureaws import rsautil
 
 # Important Variables - DO NOT change the values
 REGION = {

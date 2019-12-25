@@ -1,7 +1,7 @@
 import sys
 from botocore.exceptions import ClientError
 
-import common
+from secureaws import common
 
 def create_rsa_key_pair(file_name="", key_size=4096):
     """

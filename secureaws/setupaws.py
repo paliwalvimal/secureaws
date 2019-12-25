@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 from botocore.exceptions import ClientError
 
-import common
+from secureaws import common
 
 def secure_account_menu(session):
     """
@@ -759,7 +759,7 @@ def enable_ebs_sse(session, non_interactive, instance_ids, volume_ids, kms_id):
             final_list = {}
 
             params = {}
-            if instance_ids != None or len(instance_ids) > 0:
+            if instance_ids != None and len(instance_ids) > 0:
                 params['Filters'] = [
                     {
                         'Name': 'attachment.instance-id',
@@ -785,9 +785,10 @@ def enable_ebs_sse(session, non_interactive, instance_ids, volume_ids, kms_id):
                                 'Encrypted': volume['Encrypted'],
                                 'MountPath': volume['Attachments'][0]['Device'],
                                 'AZ': volume['AvailabilityZone'],
-                                'VolumeType': volume['VolumeType'],
-                                'Iops': volume['Iops']
+                                'VolumeType': volume['VolumeType']
                             }
+                            if 'Iops' in volume:
+                                tmp['Iops'] = volume['Iops']
                             if 'Tags' in volume:
                                 tmp['Tags'] = volume['Tags']
 
@@ -798,7 +799,7 @@ def enable_ebs_sse(session, non_interactive, instance_ids, volume_ids, kms_id):
                         break
             
             params = {}
-            if volume_ids != None or len(volume_ids) > 0:
+            if volume_ids != None and len(volume_ids) > 0:
                 params['VolumeIds'] = list(volume_ids)
                 while True:
                     resp = ec2.describe_volumes(**params)
@@ -819,9 +820,10 @@ def enable_ebs_sse(session, non_interactive, instance_ids, volume_ids, kms_id):
                                 'VolumeId': volume['VolumeId'],
                                 'Encrypted': volume['Encrypted'],
                                 'AZ': volume['AvailabilityZone'],
-                                'VolumeType': volume['VolumeType'],
-                                'Iops': volume['Iops']
+                                'VolumeType': volume['VolumeType']
                             }
+                            if 'Iops' in volume:
+                                tmp['Iops'] = volume['Iops']
                             if 'Tags' in volume:
                                 tmp['Tags'] = volume['Tags']
                             if len(volume['Attachments']) != 0:

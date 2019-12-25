@@ -1,7 +1,7 @@
 import sys
 from botocore.exceptions import ClientError
 
-import secureaws
+from secureaws import common
 
 def check_account(session):
     """
@@ -214,7 +214,7 @@ def check_ec2_volumes(session):
             resp = ec2.describe_volumes(**params)
             for volume in resp['Volumes']:
                 vid = volume['VolumeId']
-                vname = secureaws.get_name_tag(volume['Tags']) if "Tags" in volume else None
+                vname = common.get_name_tag(volume['Tags']) if "Tags" in volume else None
                 if vname != None:
                     vname = vname + "({})".format(vid)
                 else:
