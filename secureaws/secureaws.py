@@ -1,8 +1,8 @@
 """
-##            ###########
+##            ## ## ## ##
  ##          ##        ##
   ##        ##         ##
-   ##      ##############
+   ##      ## ## ## ## ##
     ##    ##
      ##  ##
        ##
@@ -116,6 +116,7 @@ def setup_group():
     pass
 
 @setup_group.command()
+@click.option('--menu', is_flag=True, help='Display interactive menu to setup security services')
 @click.option('--access-key', help='AWS IAM User Access Key')
 @click.option('--secret-key', help='AWS IAM User Access Key')
 @click.option('--profile', help='AWS CLI profile')
@@ -126,7 +127,7 @@ def setup_group():
 @click.option('--instance-id', multiple=True, help='Instance ID (Required only for ebs-sse)')
 @click.option('--volume-id', multiple=True, help='Volume ID (Required only for ebs-sse)')
 @click.option('--kms-id', help='Supports both KMS Key ID or Alias. Only supported for s3-sse and ebs-sse')
-def setup(access_key, secret_key, profile, region, non_interactive, svc, bucket_name, instance_id, volume_id, kms_id):
+def setup(menu, access_key, secret_key, profile, region, non_interactive, svc, bucket_name, instance_id, volume_id, kms_id):
     '''
     \b
     This command supports securing following services on your AWS account:
@@ -196,10 +197,10 @@ def setup(access_key, secret_key, profile, region, non_interactive, svc, bucket_
 
     \b
     Usage:
-    - Setup all services using AWS profile (except ebs-sse):
+    - Setup all services using AWS profile:
         secureaws setup --profile xxx --region xxx
-    - Setup all services using AWS keys (except ebs-sse):
-        secureaws setup --access-key xxx --secret-key xxx --region xxx
+    - Setup all services using AWS keys in non-interactive mode (except ebs-sse):
+        secureaws setup --access-key xxx --secret-key xxx --region xxx -y
     - Setup specific service(s):
         secureaws setup --profile xxx --service cloudtrail -s flowlogs -s mfa --region xxx
     - Setup MFA for an Root user:
@@ -212,12 +213,15 @@ def setup(access_key, secret_key, profile, region, non_interactive, svc, bucket_
         secureaws setup --profile xxx --region xxx -s s3-sse --bucket-name xxx --bucket-name xxx
     - Encrypt EBS Volumes using Instance ID(s):
         secureaws setup --profile xxx -s ebs-sse --instance-id xxx --region xxx
-    - Encrypt EBS Volumes using Volume ID(s) using KMS Alias:
+    - Encrypt EBS Volumes using Volume ID(s) and KMS Alias:
         secureaws setup --profile xxx -s ebs-sse --volume-id xxx --volume-id xxx --kms-id alias/xxx --region xxx
     '''
 
     secureaws_obj = secureaws(access_key, secret_key, profile, region)
-    setupaws.secure_account(secureaws_obj.getSession(), svc, buckets=bucket_name, instance_id=instance_id, volume_id=volume_id, kms_id=kms_id, non_interactive=non_interactive)
+    if menu:
+        setupaws.secure_account_menu(secureaws_obj.getSession())
+    else:
+        setupaws.secure_account(secureaws_obj.getSession(), svc, buckets=bucket_name, instance_id=instance_id, volume_id=volume_id, kms_id=kms_id, non_interactive=non_interactive)
 
 @click.group()
 def rsa_group():

@@ -26,7 +26,8 @@ def secure_account_menu(session):
             print("3: Enable FlowLogs")
             print("4: Enable Root MFA")
             print("5: Enable S3 SSE")
-            print("6: Setup Password Policy\n")
+            print("6: Setup Password Policy")
+            print("7: Enable EBS SSE\n")
             choice = str.lower(str.strip(input("Choice: ")))
 
             if choice == "q":
@@ -58,6 +59,8 @@ def secure_account_menu(session):
                         enable_s3_sse(session, non_interactive=False)
                     elif ch == "6":
                         setup_custom_password_policy(session, non_interactive=False)
+                    elif ch == "7":
+                        enable_ebs_sse(session, non_interactive=False)
                     elif ch == "q" or ch == "?" or ch == "*":
                         continue
                     else:
@@ -74,6 +77,8 @@ def secure_account_menu(session):
                 enable_s3_sse(session, non_interactive=False)
             elif choice == "6":
                 setup_custom_password_policy(session, non_interactive=False)
+            elif choice == "7":
+                enable_ebs_sse(session, non_interactive=False)
             else:
                 print("Invalid choice.")
     except ClientError as e:
@@ -88,6 +93,8 @@ def secure_account(session, svc=None, buckets=None, instance_id=None, volume_id=
         setup_virtual_mfa(session, non_interactive)
         enable_s3_sse(session, non_interactive, buckets, kms_id)
         setup_custom_password_policy(session, non_interactive)
+        if not non_interactive:
+            enable_ebs_sse(session, non_interactive, instance_id, volume_id, kms_id)
     else:
         for s in svc:
             if s == "cloudtrail":
@@ -102,7 +109,7 @@ def secure_account(session, svc=None, buckets=None, instance_id=None, volume_id=
             elif s == "s3-sse":
                 enable_s3_sse(session, non_interactive, buckets, kms_id)
             elif s == "ebs-sse":
-                if (instance_id is None and volume_id is None) or (len(instance_id) == 0 and len(volume_id) == 0):
+                if ((instance_id is None and volume_id is None) or (len(instance_id) == 0 and len(volume_id) == 0)) and non_interactive:
                     print("Either --instance-id or --volume-id is required for EBS enryption")
                     return False
                 enable_ebs_sse(session, non_interactive, instance_id, volume_id, kms_id)
@@ -737,19 +744,31 @@ def setup_custom_password_policy(session, non_interactive, pass_length=10, rq_nu
         print("Error: {}".format(ex))
         return False
 
-def enable_ebs_sse(session, non_interactive, instance_ids, volume_ids, kms_id):
+def enable_ebs_sse(session, non_interactive, instance_ids=None, volume_ids=None, kms_id=None):
     """
     This will enable server-side encryption on EBS volumes
     """
 
     opt = ""
     try:
-        if not non_interactive:
-            print("\n====================================")
-            print("Encrypting EBS Volumes")
-            print("====================================")
+        print("\n====================================")
+        print("Encrypting EBS Volumes")
+        print("====================================")
 
-            print("!!!WARNING!!!\nThis results in downtime if volume is attached to an instance.")
+        print("!!!WARNING!!!\nThis results in downtime if volume is attached to an instance.")
+        if not non_interactive:
+            vm_ids = str.lower(str.strip(input("\nEnter instance id(s)(comma separated): ")))
+            vol_ids = str.lower(str.strip(input("Enter volume id(s)(comma separated): ")))
+
+            if len(vm_ids) < 10 and len(vol_ids) < 10:
+                print("Either instance id or volume id is required.")
+                return False
+            
+            if len(vm_ids) > 10:
+                instance_ids = tuple(str(s).strip(", ") for s in vm_ids.strip(", ").split(","))
+            if len(vol_ids) > 10:
+                volume_ids = tuple(str(s).strip(", ") for s in vol_ids.strip(", ").split(","))
+
             opt = str.lower(str.strip(input("\nDo you want to continue(Y/n): ")))
         else:
             opt = "y"

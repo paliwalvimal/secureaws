@@ -25,7 +25,7 @@ This package will scan your AWS account to identify whether basic security servi
 ## Examples:
 - Scan AWS account using AWS keys: `secureaws check --access-key XXXXXX --secret-key XXXXXX --region us-west-2`
 - Scan AWS account using profile: `secureaws check --profile xxx --region eu-west-1`
-- Setup all services in interactive mode (except ebs-sse): `secureaws setup --profile XXXXXX --region ap-south-1`
+- Setup all services in interactive mode: `secureaws setup --profile XXXXXX --region ap-south-1`
 - Setup all services in non-interactive mode (except ebs-sse): `secureaws setup --access-key XXXXXX --secret-key XXXXXX -y`
 - Setup specific service(s): `secureaws setup --profile XXXXXX --region ap-south-1 -s config -s mfa`
 - Generate RSA Key Pair: `secureaws genrsa`
