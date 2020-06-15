@@ -30,3 +30,77 @@ This package will scan your AWS account to identify whether basic security servi
 - Setup specific service(s): `secureaws setup --profile XXXXXX --region ap-south-1 -s config -s mfa`
 - Generate RSA Key Pair: `secureaws genrsa`
 - Generate RSA Key Pair with custom filename and key size: `secureaws genrsa --file-name xxx --key-size 2048`
+
+## IAM Permissions required:
+#### You can also find required IAM permission under help section of both check and setup
+
+### For `check` command:
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+          "cloudtrail:DescribeTrails",
+          "config:DescribeConfigurationRecorderStatus",
+          "ec2:DescribeFlowLogs",
+          "iam:GetAccountSummary",
+          "iam:GetAccountPasswordPolicy",
+          "macie:ListMemberAccounts",
+          "guardduty:ListDetectors",
+          "s3:ListAllMyBuckets",
+          "s3:GetEncryptionConfiguration",
+          "ec2:DescribeVolumes"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### For `setup` command:
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:PutEncryptionConfiguration",
+        "s3:ListAllMyBuckets",
+        "s3:PutBucketPolicy",
+        "s3:HeadBucket",
+        "cloudtrail:StartLogging",
+        "cloudtrail:CreateTrail",
+        "iam:CreateRole",
+        "iam:PassRole",
+        "iam:AttachRolePolicy",
+        "iam:CreatePolicy",
+        "iam:UpdateAccountPasswordPolicy",
+        "iam:CreateVirtualMFADevice",
+        "iam:EnableMFADevice",
+        "iam:GetUser",
+        "iam:ListMFADevices",
+        "config:StartConfigurationRecorder",
+        "config:PutDeliveryChannel",
+        "config:PutConfigurationRecorder",
+        "logs:CreateLogGroup",
+        "logs:DescribeLogGroups",
+        "ec2:CreateFlowLogs",
+        "ec2:DescribeVpcs",
+        "ec2:StopInstances",
+        "ec2:StartInstances",
+        "ec2:CreateSnapshot",
+        "ec2:CopySnapshot",
+        "ec2:CreateVolume",
+        "ec2:AttachVolume",
+        "ec2:DeleteVolume",   # Required for deleting unencrypted volume
+        "ec2:DeleteSnapshot"  # Required for deleting unencrypted snapshot
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
