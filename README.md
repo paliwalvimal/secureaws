@@ -32,7 +32,7 @@ This package will scan your AWS account to identify whether basic security servi
 - Generate RSA Key Pair with custom filename and key size: `secureaws genrsa --file-name xxx --key-size 2048`
 
 ## IAM Permissions required:
-#### You can also find required IAM permission under help section of both check and setup
+#### You can also find required IAM permission under help section of both check and setup.
 
 ### For `check` command:
 ```
