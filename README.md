@@ -2,6 +2,9 @@
 
 This package will scan your AWS account to identify whether basic security services are enabled. If not, will help you enable/setup the same.
 
+## License:
+MIT License. See [License](LICENCE) for full details.
+
 ## Covered Services:
 - CloudTrail
 - Config
