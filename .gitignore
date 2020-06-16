@@ -102,3 +102,5 @@ ENV/
 
 # Additional files
 pip-distribute.sh
+
+.vscode
