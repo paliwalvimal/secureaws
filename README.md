@@ -3,6 +3,8 @@
 This package will scan your AWS account to identify whether basic security services are enabled. If not, will help you enable/setup the same.
 
 ## License:
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 MIT License. See [License](LICENCE) for full details.
 
 ## Covered Services:
