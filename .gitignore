@@ -104,3 +104,5 @@ ENV/
 pip-distribute.sh
 
 .vscode
+
+releases

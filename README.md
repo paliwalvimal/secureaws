@@ -21,7 +21,7 @@ MIT Licence. See [Licence](LICENCE) for full details.
 
 ## Installation (Any 1):
 - Run `pip3 install secureaws`
-- Clone the repo and run `python3 setup.py install`
+- Download the [latest release](https://github.com/paliwalvimal/secure-aws/releases/latest), extract it and run `python3 setup.py install`
 
 ## Help:
 - `secureaws --help`
