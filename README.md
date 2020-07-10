@@ -1,4 +1,4 @@
-# secure-aws
+# secureaws
 
 This package will scan your AWS account to identify whether basic security services are enabled. If not, will help you enable/setup the same.
 
@@ -21,7 +21,7 @@ MIT Licence. See [Licence](LICENCE) for full details.
 
 ## Installation (Any 1):
 - Run `pip3 install secureaws`
-- Download the [latest release](https://github.com/paliwalvimal/secure-aws/releases/latest), extract it and run `python3 setup.py install`
+- Download the [latest release](https://github.com/paliwalvimal/secureaws/releases/latest), extract it and run `python3 setup.py install`
 
 ## Help:
 - `secureaws --help`
