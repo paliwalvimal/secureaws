@@ -39,7 +39,7 @@ MIT Licence. See [Licence](LICENCE) for full details.
 ## IAM Permissions required:
 #### You can also find required IAM permission under help section of both check and setup.
 
-### For `check` command:
+#### For `check` command: This commands scans your AWS account to check if recommended security services/options are enabled
 ```
 {
   "Version": "2012-10-17",
@@ -64,7 +64,7 @@ MIT Licence. See [Licence](LICENCE) for full details.
 }
 ```
 
-### For `setup` command:
+#### For `setup` command: This command will help you enable recommended security services/options on your AWS account
 ```
 {
   "Version": "2012-10-17",
